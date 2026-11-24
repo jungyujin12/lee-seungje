@@ -9,7 +9,7 @@ let ticking = false;
 function setActive(index) {
   if (index === activeIndex && chapters[index].classList.contains("is-active")) return;
   activeIndex = index;
-  document.body.classList.toggle("site-light", ["form", "lookbook", "process"].includes(chapters[index].id));
+  document.body.classList.toggle("site-light", ["form", "lookbook", "process", "contact"].includes(chapters[index].id));
   chapters.forEach((chapter, chapterIndex) => {
     chapter.classList.toggle("is-active", chapterIndex === index);
   });
