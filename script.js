@@ -13,6 +13,9 @@ function setActive(index) {
   chapters.forEach((chapter, chapterIndex) => {
     chapter.classList.toggle("is-active", chapterIndex === index);
   });
+  document.querySelectorAll(".zoomable-photo").forEach((photo) => {
+    photo.tabIndex = photo.closest(".slide") === chapters[index] ? 0 : -1;
+  });
   railLinks.forEach((link, linkIndex) => {
     link.classList.toggle("active", linkIndex === index);
     if (linkIndex === index) link.setAttribute("aria-current", "true");
@@ -66,6 +69,7 @@ document.querySelectorAll('a[href^="#"]').forEach((link) => {
 });
 
 window.addEventListener("keydown", (event) => {
+  if (document.querySelector(".photo-viewer")?.open) return;
   if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
   if (["ArrowDown", "PageDown"].includes(event.key) && activeIndex < chapters.length - 1) {
     event.preventDefault();
@@ -110,6 +114,64 @@ next.addEventListener("click", () => {
 });
 strip.addEventListener("scroll", updateLookButtons, { passive: true });
 window.addEventListener("resize", () => { findActive(); updateLookButtons(); });
+
+const photos = [...document.querySelectorAll(".slide img")];
+const photoViewer = document.querySelector(".photo-viewer");
+const viewerImage = photoViewer.querySelector(".viewer-image");
+const viewerCount = photoViewer.querySelector(".viewer-count");
+const viewerCaption = photoViewer.querySelector(".viewer-caption");
+const viewerPrevious = photoViewer.querySelector(".viewer-prev");
+const viewerNext = photoViewer.querySelector(".viewer-next");
+const viewerClose = photoViewer.querySelector(".viewer-close");
+let photoIndex = 0;
+let photoGroup = [];
+let returnFocus = null;
+
+function showPhoto(index) {
+  photoIndex = Math.max(0, Math.min(index, photoGroup.length - 1));
+  const photo = photoGroup[photoIndex];
+  const description = photo.alt || "이승제 인물 사진";
+  viewerImage.src = photo.currentSrc || photo.src;
+  viewerImage.alt = description;
+  viewerCaption.textContent = description;
+  viewerCount.textContent = `PHOTO ${String(photoIndex + 1).padStart(2, "0")} / ${String(photoGroup.length).padStart(2, "0")}`;
+  viewerPrevious.disabled = photoIndex === 0;
+  viewerNext.disabled = photoIndex === photoGroup.length - 1;
+}
+
+photos.forEach((photo) => {
+  photo.classList.add("zoomable-photo");
+  photo.setAttribute("role", "button");
+  photo.tabIndex = photo.closest(".slide").classList.contains("is-active") ? 0 : -1;
+  photo.setAttribute("aria-haspopup", "dialog");
+  photo.setAttribute("aria-label", `사진 크게 보기: ${photo.alt || "이승제 인물 사진"}`);
+  const open = () => {
+    returnFocus = photo;
+    photoGroup = [...photo.closest(".slide").querySelectorAll("img")].filter((image) => image.getClientRects().length > 0);
+    showPhoto(photoGroup.indexOf(photo));
+    photoViewer.showModal();
+    viewerClose.focus();
+  };
+  photo.addEventListener("click", open);
+  photo.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      open();
+    }
+  });
+});
+
+viewerPrevious.addEventListener("click", () => showPhoto(photoIndex - 1));
+viewerNext.addEventListener("click", () => showPhoto(photoIndex + 1));
+viewerClose.addEventListener("click", () => photoViewer.close());
+photoViewer.addEventListener("keydown", (event) => {
+  if (event.key === "ArrowLeft") { event.preventDefault(); showPhoto(photoIndex - 1); }
+  if (event.key === "ArrowRight") { event.preventDefault(); showPhoto(photoIndex + 1); }
+});
+photoViewer.addEventListener("close", () => {
+  viewerImage.removeAttribute("src");
+  returnFocus?.focus({ preventScroll: true });
+});
 
 function openHash() {
   if (!location.hash) return;
